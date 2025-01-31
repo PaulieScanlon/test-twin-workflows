@@ -1,0 +1,27 @@
+name: Neon Twin Sync
+
+on:
+  schedule:
+    - cron: '0 0 * * *' # Runs daily at midnight
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up PostgreSQL
+        uses: postgres-actions/setup-postgresql@v2
+        with:
+          postgresql-version: '17'
+
+      - name: Dump source database
+        run: |
+          pg_dump -Fc -v -d ${{ secrets.PROD_DATABASE_URL }} -f source_dump.bak
+
+      - name: Restore to Neon
+        run: |
+          pg_restore -v -d ${{ secrets.DEV_DATABASE_URL }} source_dump.bak

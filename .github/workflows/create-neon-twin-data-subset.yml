@@ -21,7 +21,15 @@ jobs:
           yes '' | sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh
           sudo apt install -y postgresql-${{ env.PG_VERSION }}
 
-      - name: Dump from RDS and Restore to Neon
+      - name: Create temporary table and dump data
         run: |
-          /usr/lib/postgresql/${{ env.PG_VERSION }}/bin/pg_dump "${{ env.PROD_DATABASE_URL }}" -Fc -f "${{ github.workspace }}/prod-dump-file.dump"
+          psql "${{ env.PROD_DATABASE_URL }}" -c "CREATE TEMP TABLE users_temp AS SELECT * FROM users LIMIT 100;"
+
+          /usr/lib/postgresql/${{ env.PG_VERSION }}/bin/pg_dump "${{ env.PROD_DATABASE_URL }}" -Fc --no-owner --no-acl --data-only \
+            --table=users_temp --file="${{ github.workspace }}/prod-dump-file.dump"
+
+          psql "${{ env.PROD_DATABASE_URL }}" -c "DROP TABLE users_temp;"
+
+      - name: Restore data to Neon
+        run: |
           /usr/lib/postgresql/${{ env.PG_VERSION }}/bin/pg_restore -d "${{ env.DEV_DATABASE_URL }}" --clean --no-owner --no-acl --if-exists "${{ github.workspace }}/prod-dump-file.dump"

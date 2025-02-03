@@ -1,0 +1,39 @@
+name: Built-in Runner
+
+on:
+  # schedule:
+  # - cron: '0 0 * * *' # Runs at midnight ET (us-east-1)
+  workflow_dispatch:
+
+env:
+  PROD_DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
+  DEV_DATABASE_URL: ${{ secrets.DEV_DATABASE_URL }}
+
+jobs:
+  dump-and-restore:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Start PostgreSQL Service
+        run: |
+          sudo systemctl start postgresql.service
+
+      - name: Check PostgreSQL Service Version
+        run: |
+          psql --version
+
+      - name: Check DEV_DATABASE_URL Version
+        run: |
+          psql "${{ env.DEV_DATABASE_URL }}" -c "SELECT version();"
+
+      - name: Query DEV_DATABASE_URL
+        run: |
+          psql "${{ env.DEV_DATABASE_URL }}" -c "SELECT * FROM users LIMIT 5;"
+
+      - name: Check PROD_DATABASE_URL Version
+        run: |
+          psql "${{ env.PROD_DATABASE_URL }}" -c "SELECT version();"
+
+      - name: Query PROD_DATABASE_URL
+        run: |
+          psql "${{ env.PROD_DATABASE_URL }}" -c "SELECT * FROM users LIMIT 5;"

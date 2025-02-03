@@ -31,3 +31,7 @@ jobs:
         run: |
           /usr/lib/postgresql/${{ env.PG_VERSION }}/bin/psql "${{ env.DEV_DATABASE_URL }}" -c "DROP TABLE IF EXISTS public.users CASCADE;"
           /usr/lib/postgresql/${{ env.PG_VERSION }}/bin/psql "${{ env.DEV_DATABASE_URL }}" -f "${{ github.workspace }}/users_schema.sql"
+
+      - name: Restore data to Neon
+        run: |
+          /usr/lib/postgresql/${{ env.PG_VERSION }}/bin/psql "${{ env.DEV_DATABASE_URL }}" -c "\copy users FROM '${{ github.workspace }}/users_subset.csv' WITH CSV HEADER"

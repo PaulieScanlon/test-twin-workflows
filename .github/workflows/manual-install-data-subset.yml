@@ -23,7 +23,7 @@ jobs:
 
       - name: Dump schema
         run: |
-          /usr/lib/postgresql/${{ env.PG_VERSION }}/bin/pg_dump "${{ env.PROD_DATABASE_URL }}" --schema-only --table=users -f "${{ github.workspace }}/users_schema.sql"
+          /usr/lib/postgresql/${{ env.PG_VERSION }}/bin/pg_dump "${{ env.PROD_DATABASE_URL }}" --schema-only -f "${{ github.workspace }}/all_schema.sql"
 
       - name: Dump data
         run: |
@@ -35,7 +35,7 @@ jobs:
 
       - name: Restore schema
         run: |
-          /usr/lib/postgresql/${{ env.PG_VERSION }}/bin/psql "${{ env.DEV_DATABASE_URL }}" -f "${{ github.workspace }}/users_schema.sql"
+          /usr/lib/postgresql/${{ env.PG_VERSION }}/bin/psql "${{ env.DEV_DATABASE_URL }}" -f "${{ github.workspace }}/all_schema.sql"
 
       - name: Restore data
         run: |

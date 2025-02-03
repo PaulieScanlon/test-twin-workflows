@@ -21,7 +21,16 @@ jobs:
           yes '' | sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh
           sudo apt install -y postgresql-${{ env.PG_VERSION }}
 
-      - name: Dump subset and restore to Neon
+      - name: Dump data subset and schema
         run: |
-          psql "${{ env.PROD_DATABASE_URL }}" -c "\copy (SELECT * FROM users ORDER BY user_id DESC LIMIT 50) TO '${{ github.workspace }}/users_subset.sql' WITH CSV HEADER"
-          psql "${{ env.DEV_DATABASE_URL }}" -c "\copy users FROM '${{ github.workspace }}/users_subset.sql' WITH CSV HEADER"
+          pg_dump "${{ env.PROD_DATABASE_URL }}" --schema-only --table=users -f "${{ github.workspace }}/users_schema.sql"
+
+          psql "${{ env.PROD_DATABASE_URL }}" -c "\copy (SELECT * FROM users ORDER BY user_id DESC LIMIT 50) TO '${{ github.workspace }}/users_subset.csv' WITH CSV HEADER"
+
+      - name: Restore schema to Neon
+        run: |
+          psql "${{ env.DEV_DATABASE_URL }}" -f "${{ github.workspace }}/users_schema.sql"
+
+      - name: Restore data to Neon
+        run: |
+          psql "${{ env.DEV_DATABASE_URL }}" -c "\copy users FROM '${{ github.workspace }}/users_subset.csv' WITH CSV HEADER"

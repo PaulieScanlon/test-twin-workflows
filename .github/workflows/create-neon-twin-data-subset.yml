@@ -25,12 +25,12 @@ jobs:
         run: |
           /usr/lib/postgresql/${{ env.PG_VERSION }}/bin/pg_dump "${{ env.PROD_DATABASE_URL }}" --schema-only --table=users -f "${{ github.workspace }}/users_schema.sql"
 
-          psql "${{ env.PROD_DATABASE_URL }}" -c "\copy (SELECT * FROM users ORDER BY user_id DESC LIMIT 50) TO '${{ github.workspace }}/users_subset.csv' WITH CSV HEADER"
+          /usr/lib/postgresql/${{ env.PG_VERSION }}/bin/psql "${{ env.PROD_DATABASE_URL }}" -c "\copy (SELECT * FROM users ORDER BY user_id DESC LIMIT 50) TO '${{ github.workspace }}/users_subset.csv' WITH CSV HEADER"
 
       - name: Restore schema to Neon
         run: |
-          psql "${{ env.DEV_DATABASE_URL }}" -f "${{ github.workspace }}/users_schema.sql"
+          /usr/lib/postgresql/${{ env.PG_VERSION }}/bin/psql "${{ env.DEV_DATABASE_URL }}" -f "${{ github.workspace }}/users_schema.sql"
 
       - name: Restore data to Neon
         run: |
-          psql "${{ env.DEV_DATABASE_URL }}" -c "\copy users FROM '${{ github.workspace }}/users_subset.csv' WITH CSV HEADER"
+          /usr/lib/postgresql/${{ env.PG_VERSION }}/bin/psql "${{ env.DEV_DATABASE_URL }}" -c "\copy users FROM '${{ github.workspace }}/users_subset.csv' WITH CSV HEADER"

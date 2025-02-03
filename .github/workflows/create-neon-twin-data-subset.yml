@@ -21,25 +21,22 @@ jobs:
           yes '' | sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh
           sudo apt install -y postgresql-${{ env.PG_VERSION }}
 
-      - name: Set PostgreSQL Path
-        run: echo "POSTGRES=/usr/lib/postgresql/${{ env.PG_VERSION }}/bin" >> $GITHUB_ENV
-
       - name: Dump schema
         run: |
-          $POSTGRES/pg_dump "${{ env.PROD_DATABASE_URL }}" --schema-only --table=users -f "${{ github.workspace }}/users_schema.sql"
+          /usr/lib/postgresql/${{ env.PG_VERSION }}/bin/pg_dump "${{ env.PROD_DATABASE_URL }}" --schema-only --table=users -f "${{ github.workspace }}/users_schema.sql"
 
       - name: Dump data
         run: |
-          $POSTGRES/psql "${{ env.PROD_DATABASE_URL }}" -c "\copy (SELECT * FROM users ORDER BY user_id DESC LIMIT 100) TO '${{ github.workspace }}/users_subset.csv' WITH CSV HEADER"
+          /usr/lib/postgresql/${{ env.PG_VERSION }}/bin/psql "${{ env.PROD_DATABASE_URL }}" -c "\copy (SELECT * FROM users ORDER BY user_id DESC LIMIT 50) TO '${{ github.workspace }}/users_subset.csv' WITH CSV HEADER"
 
       - name: Drop tables
         run: |
-          $POSTGRES/psql "${{ env.DEV_DATABASE_URL }}" -c "DROP TABLE IF EXISTS public.users CASCADE;"
+          /usr/lib/postgresql/${{ env.PG_VERSION }}/bin/psql "${{ env.DEV_DATABASE_URL }}" -c "DROP TABLE IF EXISTS public.users CASCADE;"
 
       - name: Restore schema
         run: |
-          $POSTGRES/psql "${{ env.DEV_DATABASE_URL }}" -f "${{ github.workspace }}/users_schema.sql"
+          /usr/lib/postgresql/${{ env.PG_VERSION }}/bin/psql "${{ env.DEV_DATABASE_URL }}" -f "${{ github.workspace }}/users_schema.sql"
 
       - name: Restore data
         run: |
-          $POSTGRES/psql "${{ env.DEV_DATABASE_URL }}" -c "\copy public.users FROM '${{ github.workspace }}/users_subset.csv' WITH CSV HEADER"
+          /usr/lib/postgresql/${{ env.PG_VERSION }}/bin/psql "${{ env.DEV_DATABASE_URL }}" -c "\copy public.users FROM '${{ github.workspace }}/users_subset.csv' WITH CSV HEADER"

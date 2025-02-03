@@ -34,4 +34,4 @@ jobs:
 
       - name: Restore data to Neon
         run: |
-          /usr/lib/postgresql/${{ env.PG_VERSION }}/bin/psql "${{ env.DEV_DATABASE_URL }}" -c "\copy users FROM '${{ github.workspace }}/users_subset.csv' WITH CSV HEADER"
+          /usr/lib/postgresql/${{ env.PG_VERSION }}/bin/psql "${{ env.DEV_DATABASE_URL }}" -c "\copy public.users FROM '${{ github.workspace }}/users_subset.csv' WITH CSV HEADER"

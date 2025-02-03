@@ -30,3 +30,4 @@ jobs:
       - name: Drop and restore schema to Neon
         run: |
           /usr/lib/postgresql/${{ env.PG_VERSION }}/bin/psql "${{ env.DEV_DATABASE_URL }}" -c "DROP TABLE IF EXISTS public.users CASCADE;"
+          /usr/lib/postgresql/${{ env.PG_VERSION }}/bin/psql "${{ env.DEV_DATABASE_URL }}" -f "${{ github.workspace }}/users_schema.sql"

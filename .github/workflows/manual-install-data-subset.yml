@@ -1,4 +1,4 @@
-name: Create Neon Twin (data subset)
+name: manual install data-subset
 
 on:
   # schedule:

@@ -30,7 +30,7 @@ jobs:
 
       - name: Dump data
         run: |
-          $POSTGRES/psql "${{ env.PROD_DATABASE_URL }}" -c "\copy (SELECT * FROM users ORDER BY user_id DESC LIMIT 50) TO '${{ github.workspace }}/users_subset.csv' WITH CSV HEADER"
+          $POSTGRES/psql "${{ env.PROD_DATABASE_URL }}" -c "\copy (SELECT * FROM users ORDER BY user_id DESC LIMIT 100) TO '${{ github.workspace }}/users_subset.csv' WITH CSV HEADER"
 
       - name: Drop tables
         run: |

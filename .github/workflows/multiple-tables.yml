@@ -1,0 +1,48 @@
+name: Multiple tables
+
+on:
+  schedule:
+    - cron: '0 0 * * *' # Runs at midnight ET (us-east-1)
+  workflow_dispatch:
+
+env:
+  PROD_DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
+  DEV_DATABASE_URL: ${{ secrets.DEV_DATABASE_URL }}
+  PG_VERSION: '17'
+
+jobs:
+  dump-and-restore:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Install PostgreSQL
+        run: |
+          sudo apt update
+          yes '' | sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh
+          sudo apt install -y postgresql-${{ env.PG_VERSION }}
+
+      - name: Set PostgreSQL binary path
+        run: echo "POSTGRES=/usr/lib/postgresql/${{ env.PG_VERSION }}/bin" >> $GITHUB_ENV
+
+      - name: Dump schema
+        run: |
+          $POSTGRES/pg_dump "${{ env.PROD_DATABASE_URL }}" --schema-only -f "${{ github.workspace }}/all-schema.sql"
+
+      - name: Dump data
+        run: |
+          $POSTGRES/psql "${{ env.PROD_DATABASE_URL }}" -c "\copy (SELECT * FROM products ORDER BY product_id DESC LIMIT 10) TO '${{ github.workspace }}/products-subset.csv' WITH CSV HEADER"
+          $POSTGRES/psql "${{ env.PROD_DATABASE_URL }}" -c "\copy (SELECT * FROM transactions ORDER BY transaction_id DESC LIMIT 10) TO '${{ github.workspace }}/transactions-subset.csv' WITH CSV HEADER"
+
+      - name: Drop tables
+        run: |
+          $POSTGRES/psql "${{ env.DEV_DATABASE_URL }}" -c "DROP TABLE IF EXISTS public.products CASCADE;"
+          $POSTGRES/psql "${{ env.DEV_DATABASE_URL }}" -c "DROP TABLE IF EXISTS public.transactions CASCADE;"
+
+      - name: Restore schema
+        run: |
+          $POSTGRES/psql "${{ env.DEV_DATABASE_URL }}" -f "${{ github.workspace }}/all-schema.sql"
+
+      - name: Restore data
+        run: |
+          $POSTGRES/psql "${{ env.DEV_DATABASE_URL }}" -c "\copy public.products FROM '${{ github.workspace }}/products-subset.csv' WITH CSV HEADER"
+          $POSTGRES/psql "${{ env.DEV_DATABASE_URL }}" -c "\copy public.transactions FROM '${{ github.workspace }}/transactions-subset.csv' WITH CSV HEADER"

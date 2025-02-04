@@ -43,7 +43,7 @@ jobs:
 
       - name: Restore schema
         run: |
-          $POSTGRES/pg_restore --clean --no-owner --no-acl --if-exists -s -d "${{ env.DEV_DATABASE_URL }}" "${{ github.workspace }}/all-schema.bak"
+          $POSTGRES/pg_restore --clean --no-owner --no-acl --if-exists --schema-only -d "${{ env.DEV_DATABASE_URL }}" "${{ github.workspace }}/all-schema.bak"
 
       - name: Restore data
         run: |

@@ -46,6 +46,11 @@ jobs:
         run: |
           $POSTGRES/psql "${{ env.DEV_DATABASE_URL }}" -f "${{ github.workspace }}/all-schema.sql"
 
+      - name: Debug Check schema in DEV
+        run: |
+          $POSTGRES/psql "${{ env.DEV_DATABASE_URL }}" -c "\dt public.products"
+          $POSTGRES/psql "${{ env.DEV_DATABASE_URL }}" -c "\dt public.transactions"
+
       - name: Restore data
         run: |
           $POSTGRES/psql "${{ env.DEV_DATABASE_URL }}" -c "\copy public.products FROM '${{ github.workspace }}/products-subset.csv' WITH CSV HEADER"

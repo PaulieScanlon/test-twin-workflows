@@ -17,7 +17,11 @@ env:
 jobs:
   dump-and-restore:
     runs-on: ubuntu-latest
-    if: github.event.pull_request.merged == true # Ensure the PR was merged
+    concurrency:
+      group: 'dump-and-restore'
+      cancel-in-progress: true
+    if: |
+      github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || (github.event_name == 'pull_request' && github.event.pull_request.merged == true)
 
     steps:
       - name: Install PostgreSQL

@@ -6,9 +6,10 @@ on:
   workflow_dispatch:
 
 env:
-  PROD_DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }} # Production or primary database
-  DEV_DATABASE_URL: ${{ secrets.DEV_DATABASE_URL }} # Development database
+  PROD_DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
+  DEV_DATABASE_URL: ${{ secrets.DEV_DATABASE_URL }}
   PG_VERSION: '16'
+  PG_WORK_DIR: '${{ github.workspace }}/pgcopydb'
 
 jobs:
   dump-and-restore:
@@ -21,30 +22,64 @@ jobs:
           yes '' | sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh
           sudo apt install -y postgresql-${{ env.PG_VERSION }}
 
+      - name: Set PostgreSQL binary path
+        run: echo "POSTGRES=/usr/lib/postgresql/${{ env.PG_VERSION }}/bin" >> $GITHUB_ENV
+
       - name: Install pgcopydb
         run: |
           sudo apt update
           sudo apt install -y pgcopydb
 
-      - name: Verify pgcopydb installation
-        run: |
-          pgcopydb --version
+      - name: Clean previous dump
+        run: rm -rf $PG_WORK_DIR && mkdir -p $PG_WORK_DIR
 
-      - name: Dump schema
+      - name: Dump schema from production
         run: |
-          pgcopydb dump schema --source=${{ env.PROD_DATABASE_URL }}
+          pgcopydb dump schema \
+            --source=${{ env.PROD_DATABASE_URL }} \
+            --dir=$PG_WORK_DIR
 
-      - name: Restore schema
+      - name: Drop tables and schema
         run: |
-          pgcopydb restore pre-data --target=${{ env.DEV_DATABASE_URL }}
+          echo "Dropping existing schema and tables in development"
+          $POSTGRES/psql "${{ env.DEV_DATABASE_URL }}" -c "DROP SCHEMA IF EXISTS public CASCADE;"
+          $POSTGRES/psql "${{ env.DEV_DATABASE_URL }}" -c "CREATE SCHEMA public;"
 
-      - name: Copy data
+      - name: Restore schema to development
         run: |
+          echo "Restoring schema to development"
+          pgcopydb restore pre-data \
+            --source=${{ env.PROD_DATABASE_URL }} \
+            --target=${{ env.DEV_DATABASE_URL }} \
+            --dir=$PG_WORK_DIR
+
+      - name: Create filter file for selective data copy
+        run: |
+          echo '{
+            "includeOnlyTableData": [
+              {
+                "table": "users",
+                "where": "id IN (SELECT id FROM users ORDER BY id DESC LIMIT 50)"
+              }
+            ]
+          }' > $PG_WORK_DIR/filters.json
+
+      - name: Copy data (latest 50 users)
+        run: |
+          echo "Copying selective data"
           pgcopydb copy table-data \
-          --source=${{ env.PROD_DATABASE_URL }} \
-          --target=${{ env.DEV_DATABASE_URL }} \
-          --where="id IN (SELECT id FROM users ORDER BY id DESC LIMIT 50)"
+            --source=${{ env.PROD_DATABASE_URL }} \
+            --target=${{ env.DEV_DATABASE_URL }} \
+            --filters $PG_WORK_DIR/filters.json
 
-      - name: Restore data
+      - name: Restore post-data (constraints, indexes, triggers)
         run: |
-          pgcopydb restore post-data --target=${{ env.DEV_DATABASE_URL }}
+          echo "Restoring post-data (constraints, indexes, triggers)"
+          pgcopydb restore post-data \
+            --source=${{ env.PROD_DATABASE_URL }} \
+            --target=${{ env.DEV_DATABASE_URL }} \
+            --dir=$PG_WORK_DIR \
+            --no-owner
+
+      - name: Debugging - List workspace files
+        run: ls -lah ${{ github.workspace }}

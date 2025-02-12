@@ -1,0 +1,62 @@
+name: Create Neon Twin
+
+on:
+  schedule:
+    - cron: '0 0 * * *' # Runs at midnight ET (us-east-1)
+  workflow_dispatch:
+
+env:
+  PROD_DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }} # Production or primary database
+  DEV_DATABASE_URL: ${{ secrets.DEV_DATABASE_URL }} # Development database
+  PG_VERSION: '17'
+
+jobs:
+  dump-and-restore:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Install PostgreSQL
+        run: |
+          sudo apt update
+          yes '' | sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh
+          sudo apt install -y postgresql-${{ env.PG_VERSION }}
+
+      - name: Set PostgreSQL binary path
+        run: echo "POSTGRES=/usr/lib/postgresql/${{ env.PG_VERSION }}/bin" >> $GITHUB_ENV
+
+      - name: Install pg_subsetter
+        run: |
+          curl -Ls https://github.com/teamniteo/pg_subsetter/releases/latest/download/pg_subsetter_Linux_x86_64.tar.gz | tar -xz
+          mv pg_subsetter /usr/local/bin/
+          echo "PG_SUBSETTER=/usr/local/bin/pg_subsetter" >> $GITHUB_ENV
+
+      - name: Dump schema
+        run: |
+          $POSTGRES/pg_dump --schema-only --no-owner --no-acl -n public -f "${{ github.workspace }}/all-schema.sql" "${{ env.PROD_DATABASE_URL }}"
+
+      - name: Drop tables and schema
+        run: |
+          $POSTGRES/psql "${{ env.DEV_DATABASE_URL }}" -c "DROP SCHEMA IF EXISTS public CASCADE;"
+          $POSTGRES/psql "${{ env.DEV_DATABASE_URL }}" -c "CREATE SCHEMA public;"
+
+      - name: Restore schema
+        run: |
+          $POSTGRES/psql -f "${{ github.workspace }}/all-schema.sql" "${{ env.DEV_DATABASE_URL }}"
+
+      - name: Check tables in prod
+        run: |
+          $POSTGRES/psql "${{ env.PROD_DATABASE_URL }}" -c "\dt public.*"
+
+      - name: Check tables in dev
+        run: |
+          $POSTGRES/psql "${{ env.DEV_DATABASE_URL }}" -c "\dt public.*"
+
+      - name: Run pg_subsetter # This errors and can't find the dev schema, even though it is there. 
+        run: |
+          $PG_SUBSETTER \
+            -src "${{ env.PROD_DATABASE_URL }}" \
+            -dst "${{ env.DEV_DATABASE_URL }}" \
+            -verbose \
+            -include "public.users: user_id IN (SELECT * FROM users ORDER BY user_id DESC LIMIT 50)" \
+            -include "public.products: all" \
+            -include "public.transactions: all"

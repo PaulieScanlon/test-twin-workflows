@@ -24,7 +24,7 @@ jobs:
       - name: Install pgcopydb
         run: |
           sudo apt update
-          sudo apt install -y pgcopydb=${{ env.PG_VERSION }}
+          sudo apt install -y pgcopydb
 
       - name: Verify pgcopydb installation
         run: |

@@ -6,8 +6,8 @@ on:
   workflow_dispatch:
 
 env:
-  PROD_DATABASE_URL: 'pgsql://neondb_owner:npg_1ya9PWlnSUtX@ep-rapid-bar-a4hebmmj-pooler.us-east-1.aws.neon.tech/neondb?sslmode=require'
-  DEV_DATABASE_URL: 'pgsql://neondb_owner:npg_pnC2Fvur7RMe@ep-little-frost-a4zpraai-pooler.us-east-1.aws.neon.tech/neondb?sslmode=require'
+  PROD_DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }} # Production or primary database
+  DEV_DATABASE_URL: ${{ secrets.DEV_DATABASE_URL }} # Development database
   PG_VERSION: '17'
 
 jobs:
@@ -21,14 +21,30 @@ jobs:
           yes '' | sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh
           sudo apt install -y postgresql-${{ env.PG_VERSION }}
 
-      - name: Set PostgreSQL binary path
-        run: echo "/opt/postgresql/bin" >> $GITHUB_PATH
-
-      - name: Install pgloader
+      - name: Install pgcopydb
         run: |
           sudo apt update
-          sudo apt install -y pgloader
+          sudo apt install -y pgcopydb
 
-      - name: Dump and restore data
+      - name: Verify pgcopydb installation
         run: |
-          pgloader pgsql://neondb_owner:npg_1ya9PWlnSUtX@ep-rapid-bar-a4hebmmj-pooler.us-east-1.aws.neon.tech/neondb?sslmode=require pgsql://neondb_owner:npg_pnC2Fvur7RMe@ep-little-frost-a4zpraai-pooler.us-east-1.aws.neon.tech/neondb?sslmode=require
+          pgcopydb --version
+
+      - name: Dump schema
+        run: |
+          pgcopydb dump schema --source=${{ env.PROD_DATABASE_URL }}
+
+      - name: Restore schema
+        run: |
+          pgcopydb restore pre-data --target=${{ env.DEV_DATABASE_URL }}
+
+      - name: Copy data
+        run: |
+          pgcopydb copy table-data \
+          --source=${{ env.PROD_DATABASE_URL }} \
+          --target=${{ env.DEV_DATABASE_URL }} \
+          --where="id IN (SELECT id FROM users ORDER BY id DESC LIMIT 50)"
+
+      - name: Restore data
+        run: |
+          pgcopydb restore post-data --target=${{ env.DEV_DATABASE_URL }}

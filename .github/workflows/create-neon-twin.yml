@@ -1,0 +1,34 @@
+name: Create Neon Twin
+
+on:
+  schedule:
+    - cron: '0 0 * * *' # Runs at midnight ET (us-east-1)
+  workflow_dispatch:
+
+env:
+  PROD_DATABASE_URL: 'pgsql://neondb_owner:npg_1ya9PWlnSUtX@ep-rapid-bar-a4hebmmj-pooler.us-east-1.aws.neon.tech/neondb?sslmode=require'
+  DEV_DATABASE_URL: 'pgsql://neondb_owner:npg_pnC2Fvur7RMe@ep-little-frost-a4zpraai-pooler.us-east-1.aws.neon.tech/neondb?sslmode=require'
+  PG_VERSION: '17'
+
+jobs:
+  dump-and-restore:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Install PostgreSQL
+        run: |
+          sudo apt update
+          yes '' | sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh
+          sudo apt install -y postgresql-${{ env.PG_VERSION }}
+
+      - name: Set PostgreSQL binary path
+        run: echo "/opt/postgresql/bin" >> $GITHUB_PATH
+
+      - name: Install pgloader
+        run: |
+          sudo apt update
+          sudo apt install -y pgloader
+
+      - name: Dump and restore data
+        run: |
+          pgloader pgsql://neondb_owner:npg_1ya9PWlnSUtX@ep-rapid-bar-a4hebmmj-pooler.us-east-1.aws.neon.tech/neondb?sslmode=require pgsql://neondb_owner:npg_pnC2Fvur7RMe@ep-little-frost-a4zpraai-pooler.us-east-1.aws.neon.tech/neondb?sslmode=require

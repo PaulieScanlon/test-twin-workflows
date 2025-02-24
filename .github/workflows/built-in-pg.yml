@@ -1,0 +1,27 @@
+name: built-in PostgreSQL
+
+on:
+  # schedule:
+  # - cron: '0 0 * * *' # Runs at midnight ET (us-east-1)
+  workflow_dispatch:
+
+env:
+  PROD_DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
+  DEV_DATABASE_URL: ${{ secrets.DEV_DATABASE_URL }}
+
+jobs:
+  dump-and-restore:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Start PostgreSQL Service
+        run: |
+          sudo systemctl start postgresql.service
+
+      - name: Check PostgreSQL Version
+        run: |
+          sudo -u postgres psql -c "SELECT version();"
+
+      - name: Check psql Version
+        run: |
+          psql --version

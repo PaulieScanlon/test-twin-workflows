@@ -2,7 +2,7 @@ name: built-in data-subset
 
 on:
   # schedule:
-  # - cron: '0 0 * * *' # Runs at midnight ET (us-east-1)
+  # - cron: '0 0 * * *' # Runs at midnight UTC
   workflow_dispatch:
 
 env:

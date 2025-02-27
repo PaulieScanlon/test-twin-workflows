@@ -2,7 +2,7 @@ name: Create Neon Twin
 
 on:
   schedule:
-    - cron: '0 0 * * *' # Runs at midnight ET (us-east-1)
+    - cron: '0 0 * * *' # Runs at midnight UTC
   workflow_dispatch:
 
 env:
@@ -51,7 +51,7 @@ jobs:
         run: |
           $POSTGRES/psql "${{ env.DEV_DATABASE_URL }}" -c "\dt public.*"
 
-      - name: Run pg_subsetter # This errors and can't find the dev schema, even though it is there. 
+      - name: Run pg_subsetter # This errors and can't find the dev schema, even though it is there.
         run: |
           $PG_SUBSETTER \
             -src "${{ env.PROD_DATABASE_URL }}" \
